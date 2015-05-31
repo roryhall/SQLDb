@@ -1,0 +1,307 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+ 
+<!-- Change this if you want to allow scaling -->
+        <meta charset="utf-8" />
+		<meta name="format-detection" content="telephone=no" />
+        <meta name="msapplication-tap-highlight" content="no" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+
+		<link rel="stylesheet" type="text/css" href="assets/css/jquery.mobile-1.4.5.min.css" />
+        <link rel="stylesheet" type="text/css" href="assets/css/jquery.mobile.flatui.css" />
+ 
+		<title>Database/Map App</title>
+ 
+<!-- JavaScript File below -->
+
+		<script type="text/javascript" src="assets/libs/jquery-2.1.1.min.js"></script>
+		<script type="text/javascript" src="assets/libs/jquery.mobile-1.4.5.min.js"></script>
+        <script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=false"></script>
+ 
+<!-- main scripts used in this example -->
+		<script type="text/javascript" charset="utf-8">
+         
+        // global variables
+        var db;
+        var shortName = 'WebSqlDB';
+        var version = '1.0';
+        var displayName = 'WebSqlDB';
+        var maxSize = 65535;
+		var inputLatitude;
+		var inputLongitude;	
+		var i = 0
+		var marker
+		var defaultLatLng
+		var coordsElement		
+ 
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
+         
+        // this is called when an error happens in a transaction
+        function errorHandler(transaction, error) {
+        	alert('Error: ' + error.message + ' code: ' + error.code);         
+        }
+		
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+         
+        // this is called when a successful transaction happens
+        function successCallBack() {
+        	alert("Database Created\n Refresh and clear database if required");         
+        }
+		
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+         
+        function nullHandler(){};
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+       		 function ListDBValues() {         
+        		if (!window.openDatabase) {
+        			alert('Databases are not supported in this browser.');
+        			return;
+       			 }         
+
+        	$('#readDB').html('');         
+        	// this is the section that actually gets the values from the User table and appends them to #lbUsers
+        	db.transaction(function(transaction) {
+        		transaction.executeSql('SELECT * FROM DB2;', [],
+        		function(transaction, result) {
+        			if (result != null && result.rows != null) {
+        			for (var i = 0; i < result.rows.length; i++) {
+       				 var row = result.rows.item(i);
+        			$('#readDB').append('<br><br> ID: ' + row.ID + ' Location: '+row.Location + '<br>Comment: ' + row.Comment);
+        			}
+        		}
+        	},errorHandler);
+        },errorHandler,nullHandler);         
+        return;         
+        }
+		
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~		
+         
+        function AddValueToDBfromGPS() {         
+        	if (!window.openDatabase) {
+        		alert('Databases are not supported in this browser.');
+        	return;
+        	}         
+        // this is the section that actually inserts the values into the User table
+        db.transaction(function(transaction) {
+        transaction.executeSql('INSERT INTO DB2(Location, Comment) VALUES (?, ?)',[$('#txGeolocation').val(), $('#txComment').val()], nullHandler,errorHandler);
+        });         
+        // this calls the function that will show what is in the User table in the database
+        ListDBValues();         
+        return false;
+        }
+		
+        function AddValueToDBfromMAP() {         
+        	if (!window.openDatabase) {
+        		alert('Databases are not supported in this browser.');
+        	return;
+        	}         
+        // this is the section that actually inserts the values into the User table
+        db.transaction(function(transaction) {
+        transaction.executeSql('INSERT INTO DB2(Location, Comment) VALUES (?, ?)',[$('#txMapCoords').val(), $('#txComment').val()], nullHandler,errorHandler);
+        });         
+        // this calls the function that will show what is in the User table in the database
+        ListDBValues();         
+        return false;
+        }		
+		
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~		
+		
+		 // this calls the function thatclears all rows in the User table 
+         function clearDb() {         
+        	if (!window.openDatabase) {
+        	alert('Databases are not supported in this browser.');
+        	return;
+        }
+		// this is the section that actually deletes the values into the User table		
+		db.transaction(function(transaction) {
+       	transaction.executeSql('DELETE FROM DB2;', [] , nullHandler,errorHandler);
+					});					
+		alert('Clear Database');
+		// this calls the function that will show what is in the User table in the database		
+		ListDBValues();         
+        return false;		
+		 }	 
+
+//-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		
+		 // this calls the function that clears the last record in the User table 
+         function clearLastRec() {         
+        	if (!window.openDatabase) {
+        	alert('Databases are not supported in this browser.');
+        	return;
+        }
+		// this is the section that actually deletes the last record in the User table		
+		db.transaction(function(transaction) {
+       	transaction.executeSql('DELETE FROM DB2 WHERE ID IN (SELECT max(ID) FROM DB2);', [] , nullHandler,errorHandler);
+					});					
+		alert('Deleting Last Record');
+		// this calls the function that will show what is in the User table in the database		
+		ListDBValues();         
+        return false;		
+		 }	
+		 
+		
+//-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~		 
+	/*
+ 	* Google Maps documentation: http://code.google.com/apis/maps
+ 	* On load Function
+ 	* Load map, build map functionality & create SQlite database
+ 	*/
+	$( document ).on( "pageinit", "#main", function() {
+		
+		//Create Map
+    	defaultLatLng = new google.maps.LatLng(-23.72174607355807, 133.87170186254133); // Default location  
+	
+    	if ( navigator.geolocation ) {
+        	function success(pos) {
+            	// Location found, show map with these coordinates
+            	drawMap(new google.maps.LatLng(pos.coords.latitude, pos.coords.longitude));
+        	}
+		
+        	function fail(error) {
+            	drawMap(defaultLatLng);  // Failed to find location, show default map
+        	}
+		
+        	// Find the users current position.  Cache the location for 5 minutes, timeout after 6 seconds
+        	navigator.geolocation.getCurrentPosition(success, fail, {maximumAge: 500000, enableHighAccuracy:true, timeout: 6000});
+    		} else {
+        		drawMap(defaultLatLng);  // No geolocation support, show default map
+				
+    		}
+			
+			// Draws the map
+    		function drawMap(latLng) {				
+
+				// Google Map options
+        		var myOptions = {
+            		zoom: 18,
+            		center: latLng,
+            		mapTypeId: google.maps.MapTypeId.ROADMAP
+        		};
+				
+				// The following if/else statement checks to see if the navigator function returns
+				// gps coordinates or the default setting. If it returns a current location, ie, not 
+				// equal to the default it notifies the user, Navigator Not Available and changes the
+				// style of the "Add record using GPS" button (greys out)
+				
+				if (latLng == defaultLatLng){
+					
+					$('#txGeolocation').val('Navigator Not Available');
+					$("#fromGPS").buttonMarkup({theme: 'b'});
+					
+				} else {
+					$('#txGeolocation').val(latLng.lat()+' '+latLng.lng());
+								
+				};
+				
+				// Create the map object
+        		var map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+		
+				// listen to see if map has been clicked
+				google.maps.event.addListener(map, 'click', function(event) {
+        	    createMarker(event.latLng);
+								
+      			});
+								
+
+			// this function returns the map coordinates of the marker to the txmapCoords element	
+			function updateMarkerPosition(mapCoords) {
+				
+				$('#txMapCoords').val(mapCoords.lat()+' '+mapCoords.lng());
+				//var mapCoordsElement = document.getElementById('txMapCoords');
+  				//mapCoordsElement.innerHTML = mapCoords.lat()+' '+mapCoords.lng() ;
+				}
+				
+			// this function creates a marker. It only allows a single marker
+			function createMarker(latLng) {
+  				var addMarker;
+  				var iMax=1;
+  				if(i<=(iMax -1)) {
+ 						marker = new google.maps.Marker({
+    					position: latLng,
+    					title: 'New Location',
+    					map: map,
+    					draggable: true
+  					});
+  					i++
+  				}
+				
+				// listen to see if marker has been moved
+				google.maps.event.addListener(marker, 'dragend', function() {							   
+    				updateMarkerPosition(marker.getPosition());					
+  				});					 
+			}
+							
+    	} // end drawMap()
+		
+		// create SQlite database
+		if (!window.openDatabase) {
+        		alert('Databases are not supported in this browser.');
+        		return;
+        	}
+         
+        	db = openDatabase(shortName, version, displayName, maxSize);
+			      
+       		db.transaction(function(tx){   
+        	tx.executeSql( 'CREATE TABLE IF NOT EXISTS DB2(ID INTEGER NOT NULL PRIMARY KEY, Location TEXT NOT NULL, Comment TEXT NOT NULL)',
+        	[],nullHandler,errorHandler);
+        	},errorHandler,successCallBack);	
+	
+		
+	// end on load function
+	});		
+		
+		
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
+ 
+        </script>
+</head>
+<!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   The Main Body  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+<body>
+
+<div data-role="page" id = "main"> 
+	<div data-role="header">
+    <h1>Database Demo</h1>
+    </div> 
+    
+	<div data-role="content" data-theme = "a">    
+    	<p id="bb">Current <strong>GPS</strong> Location:</p>
+
+		<input type = "text" id ="txGeolocation" value = ""</>
+        <label for="name">Add Comments:</label>
+    	<input type="text" id="txComment" value="" onclick='javascript: this.value = ""'  />
+        <label for="name">Click <strong>Map</strong> to add a Marker:</label>
+        <label for="name">Drag <strong>Marker on Map</strong> to set new Location:</label>
+        <input type = "text" id ="txMapCoords" value = "~returns marker coordinates~"</>
+                
+        <div role="main" class="ui-content" style="width: 400px; height: 400px" id="map_canvas">
+       		<!-- map loads here... -->
+        </div>
+        
+        <div data-role="controlgroup" data-type="horizontal" data-theme = "a">
+        	<a href="#" id="fromGPS" data-role="button"  data-theme = "" onClick="AddValueToDBfromGPS()">Add Record using GPS</a>
+        	<a href="#" id="fromMap" data-role="button"  data-theme = "" onClick="AddValueToDBfromMAP()">Add Record using MAP</a>        
+        </div>
+           
+		<div data-role="controlgroup" data-type="horizontal" >
+			<button class="ui-btn ui-btn-inline" onClick="ListDBValues()">Refresh </button>
+            <button class="ui-btn ui-btn-inline" onClick="clearLastRec()">Clear Last Record </button>
+            <button class="ui-btn ui-btn-inline" onClick="clearDb()">Clear All Records </button>
+        </div>
+    	
+	</div>
+<span style="font-weight:bold;">Currently stored values in Database:</span>
+<span id="readDB"></span>
+</div>
+</body>
+
+<!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   End Body  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+</html> 
