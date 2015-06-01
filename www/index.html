@@ -19,12 +19,16 @@
 
 		<script type="text/javascript" src="assets/libs/jquery-2.1.1.min.js"></script>
 		<script type="text/javascript" src="assets/libs/jquery.mobile-1.4.5.min.js"></script>
-        <script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=false"></script>
+        <script type="text/javascript" src="http://maps.google.com/maps/api/js?v=3&sensor=false&language=en"></script>
  
 <!-- main scripts used in this example -->
 		<script type="text/javascript" charset="utf-8">
          
         // global variables
+		var viewport = {
+    		width  : $(window).width(),
+    		height : $(window).height()
+		};
         var db;
         var shortName = 'WebSqlDB';
         var version = '1.0';
@@ -181,7 +185,7 @@
         		var myOptions = {
             		zoom: 18,
             		center: latLng,
-            		mapTypeId: google.maps.MapTypeId.ROADMAP
+            		mapTypeId: google.maps.MapTypeId.SATELLITE
         		};
 				
 				// The following if/else statement checks to see if the navigator function returns
@@ -191,11 +195,12 @@
 				
 				if (latLng == defaultLatLng){
 					
-					$('#txGeolocation').val('Navigator Not Available');
+					$('#txGeolocation').val('Navigator on Device Not Available, use Map');
 					$("#fromGPS").buttonMarkup({theme: 'b'});
 					
 				} else {
 					$('#txGeolocation').val(latLng.lat()+' '+latLng.lng());
+					$("#fromGPS").buttonMarkup({theme: 'f'});
 								
 				};
 				
@@ -219,16 +224,28 @@
 				
 			// this function creates a marker. It only allows a single marker
 			function createMarker(latLng) {
-  				var addMarker;
   				var iMax=1;
+
+           
   				if(i<=(iMax -1)) {
  						marker = new google.maps.Marker({
-    					position: latLng,
-    					title: 'New Location',
-    					map: map,
-    					draggable: true
-  					});
-  					i++
+    						position: latLng,
+							icon:{path: google.maps.SymbolPath.CIRCLE,scale: 10},
+    						title: 'Drag to new location',
+    						map: map,
+    						draggable: true
+  						});
+						var circle = new google.maps.Circle({
+                			center: latLng,
+                			map:map,
+               				radius:25,
+                			strokeColor: "darkcyan",
+                			strokeOpacity:0.8,
+                			strokeWeight: 2,
+                			fillColor: "darkcyan"
+				 			});
+						circle.bindTo('center',marker,'position');
+  						i++					
   				}
 				
 				// listen to see if marker has been moved
@@ -266,12 +283,12 @@
 
 <body>
 
-<div data-role="page" id = "main"> 
+<div data-role="page" id = "main" data-theme = "f"> 
 	<div data-role="header">
     <h1>Database Demo</h1>
     </div> 
     
-	<div data-role="content" data-theme = "a">    
+	<div data-role="content" data-theme = "f">    
     	<p id="bb">Current <strong>GPS</strong> Location:</p>
 
 		<input type = "text" id ="txGeolocation" value = ""</>
@@ -281,19 +298,28 @@
         <label for="name">Drag <strong>Marker on Map</strong> to set new Location:</label>
         <input type = "text" id ="txMapCoords" value = "~returns marker coordinates~"</>
                 
-        <div role="main" class="ui-content" style="width: 400px; height: 400px" id="map_canvas">
+        <div role="main" class="ui-content" style="viewport.width: 400px; height: 400px" id="map_canvas">
        		<!-- map loads here... -->
         </div>
         
-        <div data-role="controlgroup" data-type="horizontal" data-theme = "a">
-        	<a href="#" id="fromGPS" data-role="button"  data-theme = "" onClick="AddValueToDBfromGPS()">Add Record using GPS</a>
-        	<a href="#" id="fromMap" data-role="button"  data-theme = "" onClick="AddValueToDBfromMAP()">Add Record using MAP</a>        
-        </div>
+        <div data-role="navbar">
+        <br>
+    		<ul>
+        		<li><a href="#"  id="fromGPS" onClick="AddValueToDBfromGPS()" >Add Record using GPS</a></li>
+        		<li><a href="#" class="ui-btn-active" id="fromMap" onClick="AddValueToDBfromMAP()">Add Record using MAP </a></li>
+   		   </ul>
            
-		<div data-role="controlgroup" data-type="horizontal" >
-			<button class="ui-btn ui-btn-inline" onClick="ListDBValues()">Refresh </button>
-            <button class="ui-btn ui-btn-inline" onClick="clearLastRec()">Clear Last Record </button>
-            <button class="ui-btn ui-btn-inline" onClick="clearDb()">Clear All Records </button>
+		</div><!-- /navbar -->
+        
+        
+
+           
+		<div data-role="navbar" >
+       	 	<ul>            
+				<li><a href="#"  onClick="ListDBValues()" >Refresh</a></li>
+                <li><a href="#"  onClick="clearLastRec()" >Clear Last record</a></li>
+                <li><a href="#"  onClick="clearDb()" >Clear All Records</a></li>
+        	</ul>
         </div>
     	
 	</div>
